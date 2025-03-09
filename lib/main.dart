@@ -1,204 +1,106 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+
+import 'package:printing/printing.dart';
+
+import 'package:flutter/services.dart';
+
 void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  String _msg = "";
-  bool _isChecked = false;
-  int _radioValue = 0;
-  bool _isOn = false;
-
-  @override
-  Widget build(BuildContext context) {
-    const text = Text('Hello, Flutter');
-    const textArea = Column(
-      children: [
-        text,
-      ],
-    );
-
-    final button = ElevatedButton(
-      onPressed: () {
-        print("ボタンが");
-        print("押されました");
+  // PdfPreviewウィジェットの中身を用意
+  final body = Center(
+    child: PdfPreview(
+      allowPrinting: false, // 印刷ボタンを表示しない
+      allowSharing: false, // 共有ボタンを表示しない
+      canChangeOrientation: false, // 用紙の向きを変更できない
+      canChangePageFormat: false, // 用紙サイズを変更できない
+      canDebug: false, // デバッグボタンを表示しない
+      // build: 生成したいPDFを返す非同期関数を指定
+      build: (format) async {
+        final pdf = await makePdf();
+        // 生成したpdfをバイナリ( Uint8List )で返す
+        return await pdf.save();
       },
-      child: const Text("ボタン"),
-    );
+    ),
+  );
 
-    fn() {
-      print("関数実行");
-    }
+  final sc = Scaffold(body: body);
+  final app = MaterialApp(home: sc);
 
-    final textButton = TextButton(
-      onPressed: fn,
-      child: const Text("テキストボタン"),
-    );
+  runApp(app);
+}
 
-    final buttonArea = Row(
-      children: [button, textButton],
-    );
+// PDFドキュメントを生成する非同期関数
+Future<pw.Document> makePdf() async {
+  final fontData =
+      await rootBundle.load("assets/fonts/ShipporiMincho-Regular.ttf");
+  final font = pw.Font.ttf(fontData);
 
-    final textFieldText = Text('メッセージ $_msg');
-    final controller = TextEditingController();
+  // PDF Documentの作成
+  final pdf = pw.Document();
 
-    final textField = TextField(
-      controller: controller,
-      autofocus: true,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        labelText: '内容',
-        hintText: '100文字以内で入力してください',
+  // まず単一ページを作る例
+  // Page(...): PDFにおける1ページ分のレイアウトを定義するウィジェット
+  final page = pw.Page(
+    build: (pw.Context context) {
+      // ページ内の中心にテキストを配置
+      return pw.Center(
+        child: pw.Text("PDF Test"),
+      );
+    },
+  );
+
+  final page2 = pw.Page(
+      pageTheme: pw.PageTheme(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: font),
       ),
-      onChanged: (String text) {
-        print("value: $text");
-      },
-    );
-
-    setMsg() {
-      setState(() {
-        _msg = controller.text;
+      build: (pw.Context context) {
+        return pw.Center(
+          child: pw.Text("テキスト"),
+        );
       });
-    }
 
-    clear() {
-      controller.clear();
-    }
-
-    final setMsgButton = ElevatedButton(
-      onPressed: setMsg,
-      child: const Text("反映"),
-    );
-
-    final clearButton = ElevatedButton(
-      onPressed: clear,
-      child: const Text("クリア"),
-    );
-
-    final textFieldArea = Column(
-      children: [
-        textFieldText,
-        textField,
-        Row(
-          children: [setMsgButton, clearButton],
-        )
-      ],
-    );
-
-    final isCheckedText = Text("チェック: ${_isChecked ? 'ON' : 'OFF'}");
-
-    final checkBox = Checkbox(
-      value: _isChecked,
-      onChanged: (bool? value) {
-        setState(() {
-          _isChecked = value!;
-        });
-      },
-    );
-
-    const checkBoxText = Text("チェックボックス");
-
-    final checkBoxAre = Row(
-      children: [
-        isCheckedText,
-        checkBoxText,
-        checkBox,
-      ],
-    );
-
-    final radio1 = Radio(
-      value: 1,
-      groupValue: _radioValue,
-      onChanged: (int? value) {
-        setState(() {
-          _radioValue = value!;
-        });
-      },
-    );
-
-    const radio1Text = Text("Android");
-
-    final radio2 = Radio(
-      value: 2,
-      groupValue: _radioValue,
-      onChanged: (int? value) {
-        setState(() {
-          _radioValue = value!;
-        });
-      },
-    );
-
-    const radio2Text = Text("iOS");
-
-    const radioMap = {0: "未選択", 1: "Android", 2: "iOS"};
-    final radioText = Text("デバイス: ${radioMap[_radioValue]}");
-
-    final radioArea = Row(
-      children: [
-        radio1,
-        radio1Text,
-        const SizedBox(width: 10.0),
-        radio2,
-        radio2Text,
-        const SizedBox(width: 20.0),
-        radioText
-      ],
-    );
-
-    final switchText = Text(_isOn ? "ON" : "OFF");
-    final toggle = Switch(
-      value: _isOn,
-      onChanged: (bool value) {
-        setState(() {
-          _isOn = value;
-        });
-      },
-    );
-
-    final switchArea = Row(
-      children: [switchText, toggle],
-    );
-
-    final body = SafeArea(
-      child: Column(
+  List<pw.TableRow> tablerowlist = [];
+  // forループを使って10行分のデータを生成
+  for (int i = 0; i < 10; i++) {
+    tablerowlist.add(
+      pw.TableRow(
         children: [
-          textArea,
-          buttonArea,
-          textFieldArea,
-          checkBoxAre,
-          radioArea,
-          switchArea,
+          // "Test i"を表示するセル
+          pw.Text("Test $i"),
+          // i の値を表示するセル
+          pw.Text("$i"),
         ],
       ),
     );
-
-    return Scaffold(
-      body: body,
-    );
   }
+
+  // 枠線付きテーブルを作成
+  final table = pw.Table(
+    border: pw.TableBorder.all(),
+    children: tablerowlist,
+  );
+
+  // 複数ページを一度にまとめて作るには MultiPage を使う
+  // build内に表示したいウィジェットのリストを返す
+  final pageM = pw.MultiPage(
+    build: (pw.Context context) {
+      return [
+        table, // 先ほど作成したtableを配置
+      ];
+    },
+  );
+
+  // 先に作成した単一ページをPDFに追加
+  pdf.addPage(page);
+
+  // MultiPageで作成した複数ページをPDFに追加
+  pdf.addPage(pageM);
+
+  // 作成したpdfオブジェクトを返す
+  return pdf;
 }
